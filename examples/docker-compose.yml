@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    environment:
+      # Basic Configuration
+      - N8N_HOST=n8n.yourdomain.com
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - NODE_ENV=production
+      
+      # Webhook Configuration
+      - WEBHOOK_URL=https://n8n.yourdomain.com/
+      
+      # Timezone
+      - GENERIC_TIMEZONE=Asia/Ho_Chi_Minh
+      
+      # Logging
+      - N8N_LOG_LEVEL=info
+      
+      # Execution Mode
+      - EXECUTIONS_PROCESS=main
+      - EXECUTIONS_MODE=regular
+      
+      # Database
+      - DB_TYPE=sqlite
+      - DB_SQLITE_VACUUM_ON_STARTUP=true
+      
+      # Performance Tuning
+      - N8N_METRICS=false
+      - N8N_DIAGNOSTICS_ENABLED=false
+      
+    volumes:
+      - /opt/n8n/data:/home/node/.n8n
+      - /opt/n8n/backups:/backup
+      
+    networks:
+      - n8n-network
+      
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /opt/n8n/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - /opt/n8n/caddy/data:/data
+      - /opt/n8n/caddy/config:/config
+    networks:
+      - n8n-network
+    depends_on:
+      - n8n
+
+networks:
+  n8n-network:
+    driver: bridge

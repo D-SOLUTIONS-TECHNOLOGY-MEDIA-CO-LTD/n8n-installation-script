@@ -1,0 +1,33 @@
+n8n.yourdomain.com {
+    # Reverse proxy to N8N
+    reverse_proxy n8n:5678
+    
+    # Enable gzip compression
+    encode gzip
+    
+    # Security headers
+    header {
+        # Prevent clickjacking
+        X-Frame-Options "SAMEORIGIN"
+        
+        # Prevent MIME type sniffing
+        X-Content-Type-Options "nosniff"
+        
+        # Enable XSS protection
+        X-XSS-Protection "1; mode=block"
+        
+        # Referrer policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+    
+    # Access logging
+    log {
+        output file /data/access.log
+        format json
+    }
+}
+
+# Optional: Redirect www to non-www
+www.n8n.yourdomain.com {
+    redir https://n8n.yourdomain.com{uri} permanent
+}

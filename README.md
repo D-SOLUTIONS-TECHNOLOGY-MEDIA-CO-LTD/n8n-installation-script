@@ -35,6 +35,15 @@ One-click N8N installation scripts for Ubuntu with Docker, Caddy reverse proxy, 
 - ✅ **DNS validation** - Ensures new domain is ready
 - ✅ **Zero-configuration** - Smart defaults for easy migration
 
+### 🧹 Cleanup Script (`cleanup_n8n.sh`)
+- ✅ **Standalone disk reclaim** - Run any time, independent of upgrades
+- ✅ **Prunes unused Docker images** - Removes orphaned images from past upgrades
+- ✅ **Rotates backups** - Keeps newest N of both `pre_upgrade` and `pre_migration`
+- ✅ **Clears stale exports** - Removes old `/tmp/n8n-export-*` archives
+- ✅ **Journal + apt cleanup** - Vacuums systemd journal, cleans apt cache
+- ✅ **Weekly cron** - One-flag install via `--install-cron`
+- ✅ **Dry-run mode** - Preview deletions with `--dry-run`
+
 ## 🚀 Quick Start
 
 ### Installation
@@ -80,6 +89,27 @@ curl -sSL https://raw.githubusercontent.com/D-SOLUTIONS-TECHNOLOGY-MEDIA-CO-LTD/
 
 See [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) for detailed instructions.
 
+### Cleanup
+
+Reclaim disk independently of upgrades (useful when a VPS is filling up):
+
+```bash
+curl -sSL https://raw.githubusercontent.com/D-SOLUTIONS-TECHNOLOGY-MEDIA-CO-LTD/n8n-installation-script/main/cleanup_n8n.sh > cleanup_n8n.sh && chmod +x cleanup_n8n.sh && sudo ./cleanup_n8n.sh
+```
+
+```bash
+sudo ./cleanup_n8n.sh --dry-run        # preview what would be removed
+sudo ./cleanup_n8n.sh --install-cron   # install as weekly cron (/etc/cron.weekly/n8n-cleanup)
+sudo ./cleanup_n8n.sh --help           # full usage
+
+# Tune via environment variables:
+KEEP_BACKUPS=10 JOURNAL_DAYS=14 sudo ./cleanup_n8n.sh
+```
+
+It prunes unused Docker images, rotates `pre_upgrade`/`pre_migration` backups
+(keeps newest `KEEP_BACKUPS`), removes stale `/tmp/n8n-export-*` archives,
+vacuums the systemd journal, and cleans the apt cache.
+
 ## 📋 Requirements
 
 - Ubuntu 20.04 LTS or newer
@@ -104,6 +134,7 @@ n8n-installation-script/
 ├── install_n8n.sh          # Main installation script
 ├── upgrade_n8n.sh          # Upgrade script
 ├── migrate_n8n.sh          # Migration script
+├── cleanup_n8n.sh          # Disk cleanup script
 ├── README.md               # This file
 ├── MIGRATION_GUIDE.md      # Detailed migration guide
 ├── CHANGELOG.md            # Version history

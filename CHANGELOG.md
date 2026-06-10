@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.2.0] - 2026-06-10
 
 ### Added
+- `cleanup_n8n.sh` — standalone disk-reclaim script, runnable any time:
+  - Prunes unused Docker images
+  - Rotates both `pre_upgrade_*` and `pre_migration_*` backups (keeps newest
+    `KEEP_BACKUPS`), using `find` so rotation is shell-agnostic
+  - Removes stale `/tmp/n8n-export-*` archives (`EXPORT_AGE_DAYS`)
+  - Vacuums the systemd journal (`JOURNAL_DAYS`) and cleans the apt cache
+  - `--dry-run` preview, `--install-cron` (weekly), `--help`
+  - Covers the `migrate_n8n.sh` backup accumulation without modifying that script
 - `upgrade_n8n.sh` disk-safety and self-healing overhaul:
   - Pre-flight disk-space guard (`MIN_DISK_GB`, default 3GB) — aborts before
     pulling when free space is too low, preventing partial-layer corruption

@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-06-10
+
+### Added
+- `cleanup_n8n.sh` — standalone disk-reclaim script, runnable any time:
+  - Prunes unused Docker images
+  - Rotates both `pre_upgrade_*` and `pre_migration_*` backups (keeps newest
+    `KEEP_BACKUPS`), using `find` so rotation is shell-agnostic
+  - Removes stale `/tmp/n8n-export-*` archives (`EXPORT_AGE_DAYS`)
+  - Vacuums the systemd journal (`JOURNAL_DAYS`) and cleans the apt cache
+  - `--dry-run` preview, `--install-cron` (weekly), `--help`
+  - Covers the `migrate_n8n.sh` backup accumulation without modifying that script
+- `upgrade_n8n.sh` disk-safety and self-healing overhaul:
+  - Pre-flight disk-space guard (`MIN_DISK_GB`, default 3GB) — aborts before
+    pulling when free space is too low, preventing partial-layer corruption
+  - Automatic backup rotation — keeps newest `KEEP_BACKUPS` (default 5)
+    `pre_upgrade_*.sqlite` files, deletes the rest
+  - Post-upgrade image prune (`docker image prune -a -f --filter until=24h`) —
+    reclaims orphaned images from prior upgrades without touching the just-pulled one
+  - Explicit `docker pull` failure handling — old container keeps running, partial
+    layers cleaned, clear retry guidance (no half-upgraded state)
+  - In-container `/healthz` health-check loop (`HEALTH_TIMEOUT`, default 60s) —
+    probes from inside the container since port 5678 is not published to the host
+  - Full auto-rollback on health-check failure — re-tags the previous image and
+    restores the pre-upgrade database backup
+  - Disk usage report before/after with reclaimed space
+  - New flags: `--cleanup-first`, `--force`, `--skip-backup`, `--help`
+  - Env overrides: `KEEP_BACKUPS`, `MIN_DISK_GB`, `HEALTH_TIMEOUT`
+
+### Fixed
+- VPS running out of disk after repeated upgrades caused by accumulated orphan
+  Docker images and never-rotated backups
+
 ## [1.0.0] - 2025-10-06
 
 ### Added

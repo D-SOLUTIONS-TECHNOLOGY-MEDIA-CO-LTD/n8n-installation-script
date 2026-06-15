@@ -19,11 +19,13 @@ One-click N8N installation scripts for Ubuntu with Docker, Caddy reverse proxy, 
 
 ### 🔄 Upgrade Script (`upgrade_n8n.sh`)
 - ✅ **One-command upgrade** - Latest N8N version with one line
-- ✅ **Automatic backup** - Creates backup before any changes
+- ✅ **Disk-space guard** - Pre-flight check aborts before a doomed pull
+- ✅ **Automatic backup + rotation** - Backs up, keeps newest N, deletes old
+- ✅ **Image cleanup** - Prunes orphaned images from prior upgrades (≥24h)
 - ✅ **Version comparison** - Shows current vs new version
-- ✅ **Rollback support** - Easy rollback if issues occur
-- ✅ **Zero-downtime** - Graceful container restart
-- ✅ **Comprehensive logging** - Detailed logs for troubleshooting
+- ✅ **Auto-rollback** - Restores previous image + database if health check fails
+- ✅ **Health verification** - Waits for n8n `/healthz` before declaring success
+- ✅ **Disk report** - Shows space used/reclaimed before and after
 
 ### 🚀 Migration Script (`migrate_n8n.sh`)
 - ✅ **VPS-to-VPS migration** - Move N8N between servers
@@ -32,6 +34,15 @@ One-click N8N installation scripts for Ubuntu with Docker, Caddy reverse proxy, 
 - ✅ **Automatic backup** - Backup before import
 - ✅ **DNS validation** - Ensures new domain is ready
 - ✅ **Zero-configuration** - Smart defaults for easy migration
+
+### 🧹 Cleanup Script (`cleanup_n8n.sh`)
+- ✅ **Standalone disk reclaim** - Run any time, independent of upgrades
+- ✅ **Prunes unused Docker images** - Removes orphaned images from past upgrades
+- ✅ **Rotates backups** - Keeps newest N of both `pre_upgrade` and `pre_migration`
+- ✅ **Clears stale exports** - Removes old `/tmp/n8n-export-*` archives
+- ✅ **Journal + apt cleanup** - Vacuums systemd journal, cleans apt cache
+- ✅ **Weekly cron** - One-flag install via `--install-cron`
+- ✅ **Dry-run mode** - Preview deletions with `--dry-run`
 
 ## 🚀 Quick Start
 
@@ -52,6 +63,24 @@ curl -sSL https://raw.githubusercontent.com/D-SOLUTIONS-TECHNOLOGY-MEDIA-CO-LTD/
 curl -sSL https://raw.githubusercontent.com/D-SOLUTIONS-TECHNOLOGY-MEDIA-CO-LTD/n8n-installation-script/main/upgrade_n8n.sh > upgrade_n8n.sh && chmod +x upgrade_n8n.sh && sudo ./upgrade_n8n.sh
 ```
 
+**Options & overrides:**
+
+```bash
+sudo ./upgrade_n8n.sh --cleanup-first   # reclaim disk before upgrading
+sudo ./upgrade_n8n.sh --force           # skip the disk-space guard
+sudo ./upgrade_n8n.sh --skip-backup     # upgrade without a pre-upgrade backup
+sudo ./upgrade_n8n.sh --help            # full usage
+
+# Tune via environment variables:
+KEEP_BACKUPS=10 MIN_DISK_GB=5 HEALTH_TIMEOUT=90 sudo ./upgrade_n8n.sh
+```
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `KEEP_BACKUPS` | `5` | Number of `pre_upgrade_*.sqlite` backups to retain |
+| `MIN_DISK_GB` | `3` | Minimum free disk (GB) required before pulling |
+| `HEALTH_TIMEOUT` | `60` | Seconds to wait for n8n to become healthy |
+
 ### Migration
 
 ```bash
@@ -59,6 +88,27 @@ curl -sSL https://raw.githubusercontent.com/D-SOLUTIONS-TECHNOLOGY-MEDIA-CO-LTD/
 ```
 
 See [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) for detailed instructions.
+
+### Cleanup
+
+Reclaim disk independently of upgrades (useful when a VPS is filling up):
+
+```bash
+curl -sSL https://raw.githubusercontent.com/D-SOLUTIONS-TECHNOLOGY-MEDIA-CO-LTD/n8n-installation-script/main/cleanup_n8n.sh > cleanup_n8n.sh && chmod +x cleanup_n8n.sh && sudo ./cleanup_n8n.sh
+```
+
+```bash
+sudo ./cleanup_n8n.sh --dry-run        # preview what would be removed
+sudo ./cleanup_n8n.sh --install-cron   # install as weekly cron (/etc/cron.weekly/n8n-cleanup)
+sudo ./cleanup_n8n.sh --help           # full usage
+
+# Tune via environment variables:
+KEEP_BACKUPS=10 JOURNAL_DAYS=14 sudo ./cleanup_n8n.sh
+```
+
+It prunes unused Docker images, rotates `pre_upgrade`/`pre_migration` backups
+(keeps newest `KEEP_BACKUPS`), removes stale `/tmp/n8n-export-*` archives,
+vacuums the systemd journal, and cleans the apt cache.
 
 ## 📋 Requirements
 
@@ -84,6 +134,7 @@ n8n-installation-script/
 ├── install_n8n.sh          # Main installation script
 ├── upgrade_n8n.sh          # Upgrade script
 ├── migrate_n8n.sh          # Migration script
+├── cleanup_n8n.sh          # Disk cleanup script
 ├── README.md               # This file
 ├── MIGRATION_GUIDE.md      # Detailed migration guide
 ├── CHANGELOG.md            # Version history
@@ -212,11 +263,14 @@ curl -I https://your-domain.com
 
 The upgrade script:
 
-1. Creates automatic backup
-2. Pulls latest N8N image
-3. Gracefully restarts container
-4. Verifies new version
-5. Provides rollback instructions if needed
+1. Runs pre-flight checks (root, Docker daemon, n8n installed & running)
+2. Optionally reclaims disk first (`--cleanup-first`)
+3. Guards against low disk space before pulling
+4. Creates a database backup and rotates old ones (keeps newest `KEEP_BACKUPS`)
+5. Pulls the latest N8N image (fails cleanly without leaving a half state)
+6. Recreates the container with the new image
+7. Waits for `/healthz` to pass; **auto-rolls back image + database if it fails**
+8. Prunes orphaned images (≥24h old) and reports disk reclaimed
 
 ```bash
 # Check current version

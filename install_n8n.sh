@@ -4,7 +4,6 @@
 # N8N Installation Script for Ubuntu
 # Version: 1.0.0
 # Author: D-Solutions Team
-# Based on: Bình MeCode's snippets
 ###########################################
 
 set -e

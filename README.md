@@ -313,7 +313,6 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
 
 ## 🙏 Credits
 
-- Original script inspiration: [Bình MeCode](https://github.com/dangngocbinh/mecode-snippets)
 - Maintained by: [D-Solutions Team](https://d-solutions.vn)
 - N8N: [n8n.io](https://n8n.io)
 

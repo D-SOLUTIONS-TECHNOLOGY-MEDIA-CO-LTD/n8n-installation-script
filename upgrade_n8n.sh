@@ -116,6 +116,19 @@ if ! docker info &> /dev/null; then
     exit 1
 fi
 
+# Docker Compose v2 BẮT BUỘC: docker-compose v1 (Python 1.29.2) fail
+# KeyError 'ContainerConfig' với Docker Engine mới (verified n8n box 08/2026).
+COMPOSE_CMD="docker compose"
+if ! docker compose version &> /dev/null; then
+    if command -v docker-compose &> /dev/null && docker-compose version 2>/dev/null | grep -q "version v[2-9]"; then
+        COMPOSE_CMD="docker-compose"
+    else
+        log_error "Cần Docker Compose v2 (docker compose). Cài:"
+        log_error "  curl -L https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose"
+        exit 1
+    fi
+fi
+
 # Check if N8N is installed (graceful first-run guidance)
 if [ ! -f "$COMPOSE_FILE" ]; then
     log_error "N8N chưa được cài đặt (không tìm thấy $COMPOSE_FILE)"
@@ -126,7 +139,7 @@ fi
 # Check if n8n container exists/running
 if ! docker ps --format '{{.Names}}' | grep -q "^n8n$"; then
     log_error "N8N container không chạy. Vui lòng khởi động N8N trước"
-    log_info "Chạy: cd $N8N_DIR && docker-compose up -d"
+    log_info "Chạy: cd $N8N_DIR && $COMPOSE_CMD up -d"
     exit 1
 fi
 
@@ -269,7 +282,7 @@ rollback() {
     if [ -n "$OLD_IMAGE_ID" ]; then
         log_info "Khôi phục image cũ..."
         docker tag "$OLD_IMAGE_ID" "$IMAGE" || log_warn "Không thể retag image cũ"
-        docker-compose stop n8n || true
+        $COMPOSE_CMD stop n8n || true
 
         # Restore the pre-upgrade database (the new version may have migrated it).
         if [ -n "$BACKUP_FILE" ] && [ -f "$BACKUP_FILE" ]; then
@@ -280,7 +293,7 @@ rollback() {
             log_warn "Không có backup để khôi phục database (đã --skip-backup)."
         fi
 
-        docker-compose up -d --force-recreate n8n || true
+        $COMPOSE_CMD up -d --force-recreate n8n || true
         log_info "✓ Đã rollback về image cũ. Kiểm tra: docker logs n8n"
     else
         log_error "Không xác định được image cũ để rollback tự động."
@@ -292,10 +305,10 @@ rollback() {
 # ----------------------------------------------------------------------------
 log_info "Dừng container hiện tại..."
 cd "$N8N_DIR"
-docker-compose stop n8n
+$COMPOSE_CMD stop n8n
 
 log_info "Nâng cấp N8N container..."
-docker-compose up -d --force-recreate n8n
+$COMPOSE_CMD up -d --force-recreate n8n
 
 # ----------------------------------------------------------------------------
 # Health check loop — n8n's port 5678 is NOT published to the host, so probe

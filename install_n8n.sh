@@ -114,13 +114,16 @@ else
     log_info "Docker đã được cài đặt"
 fi
 
-# Install Docker Compose
-if ! command -v docker-compose &> /dev/null; then
-    log_info "Cài đặt Docker Compose..."
+# Install Docker Compose v2
+# LƯU Ý: docker-compose v1 (Python 1.29.2) KHÔNG tương thích Docker Engine mới -
+# fail KeyError 'ContainerConfig' khi recreate container (verified n8n box 08/2026).
+# Bắt buộc dùng v2: ưu tiên plugin `docker compose`, fallback standalone binary.
+COMPOSE_CMD="docker compose"
+if ! docker compose version &> /dev/null; then
+    log_info "Cài đặt Docker Compose v2 standalone..."
     curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
     chmod +x /usr/local/bin/docker-compose
-else
-    log_info "Docker Compose đã được cài đặt"
+    COMPOSE_CMD="docker-compose"
 fi
 
 # Create directories
@@ -214,7 +217,7 @@ chmod -R 755 /opt/n8n/caddy
 # Start services
 log_info "Khởi động N8N..."
 cd /opt/n8n
-docker-compose up -d
+$COMPOSE_CMD up -d
 
 # Wait for services to start
 log_info "Đang chờ các dịch vụ khởi động..."
@@ -296,9 +299,9 @@ echo "   - Logs: docker logs n8n"
 echo ""
 echo "🔧 Các lệnh hữu ích:"
 echo "   - Xem logs: docker logs -f n8n"
-echo "   - Khởi động lại: docker-compose -f /opt/n8n/docker-compose.yml restart"
-echo "   - Dừng: docker-compose -f /opt/n8n/docker-compose.yml down"
-echo "   - Khởi động: docker-compose -f /opt/n8n/docker-compose.yml up -d"
+echo "   - Khởi động lại: $COMPOSE_CMD -f /opt/n8n/docker-compose.yml restart"
+echo "   - Dừng: $COMPOSE_CMD -f /opt/n8n/docker-compose.yml down"
+echo "   - Khởi động: $COMPOSE_CMD -f /opt/n8n/docker-compose.yml up -d"
 echo ""
 echo "⚠️  Lưu ý: Có thể mất vài phút để Caddy tạo SSL certificate"
 echo ""

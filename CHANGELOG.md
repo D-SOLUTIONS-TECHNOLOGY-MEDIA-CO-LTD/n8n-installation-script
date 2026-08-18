@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.2.1] - 2026-08-18
 
+### Changed
+- `install_n8n.sh` and `upgrade_n8n.sh` now use Docker Compose v2 (`docker
+  compose`) instead of the legacy v1 `docker-compose` (Python 1.29.2), which
+  crashes with `KeyError: 'ContainerConfig'` on recent Docker Engine when
+  recreating containers. Both scripts prefer the `docker compose` plugin and
+  resolve a `COMPOSE_CMD` (install falls back to fetching the v2 standalone
+  binary; upgrade aborts with guidance if only v1 is present).
+
 ### Fixed
 - Daily backup cron (`/etc/cron.daily/n8n-backup`) created by `install_n8n.sh`
   called `docker exec n8n sqlite3 ...`, but the `n8nio/n8n` image ships no

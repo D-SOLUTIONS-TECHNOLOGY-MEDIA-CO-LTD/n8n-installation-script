@@ -203,9 +203,9 @@ sudo cp /opt/n8n/data/database.sqlite /opt/n8n/backups/manual-backup-$(date +%Y%
 
 **Restore from Backup:**
 ```bash
-sudo docker-compose -f /opt/n8n/docker-compose.yml down
+sudo docker compose -f /opt/n8n/docker-compose.yml down
 sudo cp /opt/n8n/backups/backup-YYYYMMDD.sqlite /opt/n8n/data/database.sqlite
-sudo docker-compose -f /opt/n8n/docker-compose.yml up -d
+sudo docker compose -f /opt/n8n/docker-compose.yml up -d
 ```
 
 ## 🐛 Troubleshooting
@@ -233,7 +233,7 @@ sudo docker logs n8n
 sudo docker logs caddy
 
 # Restart services
-sudo docker-compose -f /opt/n8n/docker-compose.yml restart
+sudo docker compose -f /opt/n8n/docker-compose.yml restart
 ```
 
 ### Permission Issues
@@ -243,7 +243,7 @@ sudo docker-compose -f /opt/n8n/docker-compose.yml restart
 sudo chown -R 1000:1000 /opt/n8n/data
 
 # Restart N8N
-sudo docker-compose -f /opt/n8n/docker-compose.yml restart n8n
+sudo docker compose -f /opt/n8n/docker-compose.yml restart n8n
 ```
 
 ### HTTPS Not Working

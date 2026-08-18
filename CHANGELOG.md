@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.2.1] - 2026-08-18
 
 ### Fixed
 - Daily backup cron (`/etc/cron.daily/n8n-backup`) created by `install_n8n.sh`
@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the `.backup` online-backup API (consistent snapshot even while n8n writes),
   and fails loudly with a non-zero exit + stderr message instead of silently
   when `sqlite3` or the DB is missing or the backup comes out empty.
+
+### Removed
+- Third-party attribution links/comments from `install_n8n.sh` and `README.md`.
 
 ## [1.2.0] - 2026-06-10
 

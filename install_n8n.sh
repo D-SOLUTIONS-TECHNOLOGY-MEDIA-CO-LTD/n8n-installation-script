@@ -101,7 +101,8 @@ apt-get install -y -qq \
     curl \
     gnupg \
     lsb-release \
-    software-properties-common
+    software-properties-common \
+    sqlite3
 
 # Install Docker
 if ! command -v docker &> /dev/null; then
@@ -240,15 +241,39 @@ fi
 log_info "Thiết lập backup tự động..."
 cat > /etc/cron.daily/n8n-backup << 'EOF'
 #!/bin/bash
+# Backup n8n SQLite DB via the host sqlite3 .backup API.
+# The n8nio/n8n image ships no sqlite3 CLI, so the backup MUST run on the host,
+# against the mounted DB file (/opt/n8n/data <-> container /home/node/.n8n).
+set -euo pipefail
+
 BACKUP_DIR="/opt/n8n/backups"
+DB_FILE="/opt/n8n/data/database.sqlite"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="$BACKUP_DIR/database_$TIMESTAMP.sqlite"
 
-# Backup database
-docker exec n8n sqlite3 /home/node/.n8n/database.sqlite ".backup '$BACKUP_FILE'"
+# Fail loudly (cron mail / stderr) instead of silently, so a broken backup is visible.
+if ! command -v sqlite3 &> /dev/null; then
+    echo "n8n-backup ERROR: sqlite3 not found on host" >&2
+    exit 1
+fi
+if [ ! -f "$DB_FILE" ]; then
+    echo "n8n-backup ERROR: database not found at $DB_FILE" >&2
+    exit 1
+fi
+
+mkdir -p "$BACKUP_DIR"
+
+# .backup = SQLite online backup API: consistent snapshot even while n8n is writing.
+sqlite3 "$DB_FILE" ".backup '$BACKUP_FILE'"
+
+# Verify the backup was actually produced and is non-empty before pruning old ones.
+if [ ! -s "$BACKUP_FILE" ]; then
+    echo "n8n-backup ERROR: backup file empty or missing: $BACKUP_FILE" >&2
+    exit 1
+fi
 
 # Keep only last 7 days of backups
-find $BACKUP_DIR -name "database_*.sqlite" -mtime +7 -delete
+find "$BACKUP_DIR" -name "database_*.sqlite" -mtime +7 -delete
 
 echo "Backup completed: $BACKUP_FILE"
 EOF

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Daily backup cron (`/etc/cron.daily/n8n-backup`) created by `install_n8n.sh`
+  called `docker exec n8n sqlite3 ...`, but the `n8nio/n8n` image ships no
+  `sqlite3` CLI — so the backup failed silently from first install and produced
+  no database backups. The cron now runs `sqlite3` on the host (installed as a
+  dependency) against the mounted DB file (`/opt/n8n/data/database.sqlite`) via
+  the `.backup` online-backup API (consistent snapshot even while n8n writes),
+  and fails loudly with a non-zero exit + stderr message instead of silently
+  when `sqlite3` or the DB is missing or the backup comes out empty.
+
 ## [1.2.0] - 2026-06-10
 
 ### Added

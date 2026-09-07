@@ -1,7 +1,7 @@
 #!/bin/bash
 ###########################################
 # N8N Upgrade Script
-# Version: 1.2.0
+# Version: 1.3.0
 # Author: D-Solutions Team
 ###########################################
 set -e
@@ -116,6 +116,24 @@ if ! docker info &> /dev/null; then
     exit 1
 fi
 
+# ----------------------------------------------------------------------------
+# Select Docker Compose CLI: prefer v2 ("docker compose"), fall back to the
+# legacy v1 binary ("docker-compose"). Compose v1 (1.29.x) crashes with
+# `KeyError: 'ContainerConfig'` when recreating a container from a freshly
+# pulled image, so v2 must win whenever it is available.
+# ----------------------------------------------------------------------------
+if docker compose version &> /dev/null; then
+    COMPOSE="docker compose"
+elif command -v docker-compose &> /dev/null; then
+    COMPOSE="docker-compose"
+    log_warn "Đang dùng docker-compose v1 (deprecated). Khuyến nghị cài Compose v2:"
+    log_warn "  apt-get remove -y docker-compose && apt-get install -y docker-compose-plugin"
+else
+    log_error "Không tìm thấy Docker Compose (v2 'docker compose' lẫn v1 'docker-compose')"
+    exit 1
+fi
+log_info "Sử dụng Compose CLI: $COMPOSE"
+
 # Check if N8N is installed (graceful first-run guidance)
 if [ ! -f "$COMPOSE_FILE" ]; then
     log_error "N8N chưa được cài đặt (không tìm thấy $COMPOSE_FILE)"
@@ -126,7 +144,7 @@ fi
 # Check if n8n container exists/running
 if ! docker ps --format '{{.Names}}' | grep -q "^n8n$"; then
     log_error "N8N container không chạy. Vui lòng khởi động N8N trước"
-    log_info "Chạy: cd $N8N_DIR && docker-compose up -d"
+    log_info "Chạy: cd $N8N_DIR && docker compose up -d"
     exit 1
 fi
 
@@ -269,7 +287,7 @@ rollback() {
     if [ -n "$OLD_IMAGE_ID" ]; then
         log_info "Khôi phục image cũ..."
         docker tag "$OLD_IMAGE_ID" "$IMAGE" || log_warn "Không thể retag image cũ"
-        docker-compose stop n8n || true
+        $COMPOSE stop n8n || true
 
         # Restore the pre-upgrade database (the new version may have migrated it).
         if [ -n "$BACKUP_FILE" ] && [ -f "$BACKUP_FILE" ]; then
@@ -280,7 +298,7 @@ rollback() {
             log_warn "Không có backup để khôi phục database (đã --skip-backup)."
         fi
 
-        docker-compose up -d --force-recreate n8n || true
+        $COMPOSE up -d --force-recreate n8n || true
         log_info "✓ Đã rollback về image cũ. Kiểm tra: docker logs n8n"
     else
         log_error "Không xác định được image cũ để rollback tự động."
@@ -288,14 +306,20 @@ rollback() {
 }
 
 # ----------------------------------------------------------------------------
-# Recreate container with the new image
+# Recreate container with the new image.
+# NOTE: no separate "stop" first — `up -d --force-recreate` recreates the
+# container in place, minimising downtime. A separate stop would take n8n
+# offline even if the subsequent up failed. `set -e` would also abort the
+# script before rollback() runs, so guard the call explicitly.
 # ----------------------------------------------------------------------------
-log_info "Dừng container hiện tại..."
-cd "$N8N_DIR"
-docker-compose stop n8n
-
 log_info "Nâng cấp N8N container..."
-docker-compose up -d --force-recreate n8n
+cd "$N8N_DIR"
+if ! $COMPOSE up -d --force-recreate n8n; then
+    log_error "Recreate container thất bại."
+    docker logs --tail 30 n8n 2>&1 || true
+    rollback
+    exit 1
+fi
 
 # ----------------------------------------------------------------------------
 # Health check loop — n8n's port 5678 is NOT published to the host, so probe

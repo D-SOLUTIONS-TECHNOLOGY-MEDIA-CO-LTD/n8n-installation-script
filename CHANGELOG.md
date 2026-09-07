@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-09-07
+
+### Fixed
+- **Compose v1 recreate crash (`KeyError: 'ContainerConfig'`)** — `upgrade_n8n.sh`
+  aborted mid-upgrade on hosts where the `docker-compose` command resolved to the
+  legacy standalone v1 (1.29.x) binary. v1 cannot recreate a container from a
+  freshly pulled image on current Docker Engine, leaving n8n stopped and the site
+  returning 502. All three scripts now auto-detect the Compose CLI (`$COMPOSE`),
+  preferring v2 (`docker compose`) and only falling back to v1 with a warning.
+
+### Changed
+- `install_n8n.sh` installs the Compose **v2 plugin** (`docker-compose-plugin`)
+  instead of downloading the standalone v1 binary; if v1 is detected it attempts
+  to install the v2 plugin.
+- `upgrade_n8n.sh` recreate no longer runs a separate `stop` before `up`
+  (`up -d --force-recreate` recreates in place), removing the guaranteed downtime
+  window and the failure mode where a failed `up` left n8n offline.
+- `upgrade_n8n.sh` guards the recreate with explicit error handling so `rollback()`
+  actually runs on failure (previously `set -e` aborted the script first).
+- All user-facing help/echo lines use `docker compose` (v2) syntax.
+
 ## [1.2.0] - 2026-06-10
 
 ### Added

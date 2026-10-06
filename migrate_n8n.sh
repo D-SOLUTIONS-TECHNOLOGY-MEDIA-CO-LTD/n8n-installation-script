@@ -32,6 +32,18 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# Select Docker Compose CLI: prefer v2 ("docker compose"); fall back to legacy
+# v1 ("docker-compose"). v1 (1.29.x) has the `KeyError: 'ContainerConfig'` bug.
+if docker compose version &> /dev/null; then
+    COMPOSE="docker compose"
+elif command -v docker-compose &> /dev/null; then
+    COMPOSE="docker-compose"
+    log_warn "Đang dùng docker-compose v1 (deprecated). Khuyến nghị nâng lên Compose v2."
+else
+    log_error "Không tìm thấy Docker Compose"
+    exit 1
+fi
+
 echo "=========================================="
 echo "   N8N Migration Script"
 echo "   D-Solutions Technology Media Co., Ltd."
@@ -166,7 +178,7 @@ else
     
     # Stop N8N
     log_info "Dừng N8N..."
-    docker-compose -f /opt/n8n/docker-compose.yml down
+    $COMPOSE -f /opt/n8n/docker-compose.yml down
     
     # Import database
     log_info "Import database..."
@@ -182,7 +194,7 @@ else
     
     # Start N8N
     log_info "Khởi động N8N..."
-    docker-compose -f /opt/n8n/docker-compose.yml up -d
+    $COMPOSE -f /opt/n8n/docker-compose.yml up -d
     
     # Wait
     log_info "Đang chờ N8N khởi động..."

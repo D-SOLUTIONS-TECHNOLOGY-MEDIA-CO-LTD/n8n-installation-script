@@ -114,14 +114,22 @@ else
     log_info "Docker đã được cài đặt"
 fi
 
-# Install Docker Compose
-if ! command -v docker-compose &> /dev/null; then
-    log_info "Cài đặt Docker Compose..."
-    curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-    chmod +x /usr/local/bin/docker-compose
+# Install Docker Compose (v2 plugin preferred; the legacy standalone v1 binary
+# has the `KeyError: 'ContainerConfig'` recreate bug, so never install it).
+if docker compose version &> /dev/null; then
+    COMPOSE="docker compose"
+    log_info "Docker Compose v2 đã được cài đặt"
+elif command -v docker-compose &> /dev/null; then
+    COMPOSE="docker-compose"
+    log_warn "Phát hiện docker-compose v1 (deprecated). Đang cài Compose v2 plugin..."
+    apt-get install -y docker-compose-plugin && COMPOSE="docker compose" || \
+        log_warn "Không cài được compose-plugin, tạm dùng v1"
 else
-    log_info "Docker Compose đã được cài đặt"
+    log_info "Cài đặt Docker Compose v2 plugin..."
+    apt-get install -y docker-compose-plugin
+    COMPOSE="docker compose"
 fi
+log_info "Sử dụng Compose CLI: $COMPOSE"
 
 # Create directories
 log_info "Tạo cấu trúc thư mục..."
@@ -214,7 +222,7 @@ chmod -R 755 /opt/n8n/caddy
 # Start services
 log_info "Khởi động N8N..."
 cd /opt/n8n
-docker-compose up -d
+$COMPOSE up -d
 
 # Wait for services to start
 log_info "Đang chờ các dịch vụ khởi động..."
@@ -272,9 +280,9 @@ echo "   - Logs: docker logs n8n"
 echo ""
 echo "🔧 Các lệnh hữu ích:"
 echo "   - Xem logs: docker logs -f n8n"
-echo "   - Khởi động lại: docker-compose -f /opt/n8n/docker-compose.yml restart"
-echo "   - Dừng: docker-compose -f /opt/n8n/docker-compose.yml down"
-echo "   - Khởi động: docker-compose -f /opt/n8n/docker-compose.yml up -d"
+echo "   - Khởi động lại: docker compose -f /opt/n8n/docker-compose.yml restart"
+echo "   - Dừng: docker compose -f /opt/n8n/docker-compose.yml down"
+echo "   - Khởi động: docker compose -f /opt/n8n/docker-compose.yml up -d"
 echo ""
 echo "⚠️  Lưu ý: Có thể mất vài phút để Caddy tạo SSL certificate"
 echo ""
